@@ -83,7 +83,7 @@ func initSalesForceProcessing(AccessToken string, dbcon *gorm.DB) error {
 	}
 	var eventsJSON map[string]interface{}
 	err = json.Unmarshal(eventResponseBody, &eventsJSON)
-	// This is generally caused by bad url
+	// Handling bad url, not found and token expired errors
 	if err != nil {
 		var authJson []models.SalesForceError
 		autherr := json.Unmarshal(eventResponseBody, &authJson)
