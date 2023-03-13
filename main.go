@@ -40,6 +40,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	closeErr := db.CloseDB(dbcon)
+	if closeErr != nil {
+		fmt.Println(time.Now().Format(time.RFC3339Nano), "*****", closeErr.Error(), "*****")
+	}
 	fmt.Println(time.Now().Format(time.RFC3339Nano), "*****", "Process terminated *****")
 	time.Sleep(5 * time.Second)
 }
@@ -81,7 +85,13 @@ func initSalesForceProcessing(AccessToken string, dbcon *gorm.DB) error {
 	err = json.Unmarshal(eventResponseBody, &eventsJSON)
 	// This is generally caused by bad url
 	if err != nil {
-		panic(err)
+		var authJson []models.SalesForceError
+		autherr := json.Unmarshal(eventResponseBody, &authJson)
+		if autherr != nil {
+			panic("Error parsing the event, caused by a bad url")
+		} else {
+			panic("Error parsing the event, caused by: " + authJson[0].ErrorCode + ", message: " + authJson[0].Message)
+		}
 	}
 	// Get "totalSize" and "done" fields in the response to avoid unnecessary execution and errors
 	totalSize := eventsJSON["totalSize"].(float64)

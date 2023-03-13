@@ -39,6 +39,17 @@ func InitDB() (*gorm.DB, error) {
 	if err != nil {
 		return nil, errors.New("Unable to connect to database, check if the path -> local_storage/sf_processed_logs.db, exists and you have (read/write) permissions")
 	}
+	// Pooling config
+	sqlDB, err := db.DB()
+
+	// SetMaxIdleConns sets the maximum number of connections in the idle connection pool.
+	sqlDB.SetMaxIdleConns(10)
+
+	// SetMaxOpenConns sets the maximum number of open connections to the database.
+	sqlDB.SetMaxOpenConns(100)
+
+	// SetConnMaxLifetime sets the maximum amount of time a connection may be reused.
+	sqlDB.SetConnMaxLifetime(time.Hour)
 
 	// Migrate the schema
 	db.AutoMigrate(&SfLogRecord{})
@@ -46,6 +57,15 @@ func InitDB() (*gorm.DB, error) {
 	SetInitState(db)
 	fmt.Println(time.Now().Format(time.RFC3339Nano), "*****", "Database connected", "*****")
 	return db, nil
+}
+
+func CloseDB(db *gorm.DB) error {
+	sqlDB, err := db.DB()
+	if err != nil {
+		return errors.New("Unable to close database instance -> " + err.Error())
+	}
+	sqlDB.Close()
+	return nil
 }
 
 // FindByID is a method to search by Id and return SfLogRecord

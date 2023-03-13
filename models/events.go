@@ -18,3 +18,9 @@ type EventLog struct {
 	LogDataType   string      `json:"dataType"`
 	LogxData      LogElements `json:"logx"`
 }
+
+// SalesForceError Represents an error returned by salesforce
+type SalesForceError struct {
+	Message   string `json:"message"`
+	ErrorCode string `json:"errorCode"`
+}
