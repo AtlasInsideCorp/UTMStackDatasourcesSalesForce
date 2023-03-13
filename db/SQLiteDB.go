@@ -44,7 +44,7 @@ func InitDB() (*gorm.DB, error) {
 	db.AutoMigrate(&SfLogRecord{})
 	db.AutoMigrate(&SfState{})
 	SetInitState(db)
-	fmt.Println(time.Now().String(), "*****", "Database connected", "*****")
+	fmt.Println(time.Now().Format(time.RFC3339Nano), "*****", "Database connected", "*****")
 	return db, nil
 }
 

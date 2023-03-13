@@ -19,17 +19,17 @@ import (
 func main() {
 
 	// Authenticate with Salesforce API
-	fmt.Println(time.Now().String(), "*****", "Process initiated, version:", configs.SF_version, "*****")
-	fmt.Println(time.Now().String(), "*****", "Trying to login to SalesForce *****")
+	fmt.Println(time.Now().Format(time.RFC3339Nano), "*****", "Process initiated, version:", configs.SF_version, "*****")
+	fmt.Println(time.Now().Format(time.RFC3339Nano), "*****", "Trying to login to SalesForce *****")
 	loginResp, errR := oauth.Login()
 	if errR != nil {
 		panic(errR)
 	} else {
-		fmt.Println("*****", "Login success", "*****")
+		fmt.Println(time.Now().Format(time.RFC3339Nano), "*****", "Login success", "*****")
 	}
 
 	// Testing database connection
-	fmt.Println(time.Now().String(), "*****", "Trying to connect to local database *****")
+	fmt.Println(time.Now().Format(time.RFC3339Nano), "*****", "Trying to connect to local database *****")
 	dbcon, errdb := db.InitDB()
 	if errdb != nil {
 		panic(errdb)
@@ -40,7 +40,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(time.Now().String(), "*****", "Process terminated *****")
+	fmt.Println(time.Now().Format(time.RFC3339Nano), "*****", "Process terminated *****")
 	time.Sleep(5 * time.Second)
 }
 
@@ -58,7 +58,7 @@ func initSalesForceProcessing(AccessToken string, dbcon *gorm.DB) error {
 	} else {
 		eventURL = configs.InstanceUrl + sfLastState.NextEndPoint
 	}
-	fmt.Println(time.Now().String(), "*****", "Trying to get logs from:", eventURL, "*****")
+	fmt.Println(time.Now().Format(time.RFC3339Nano), "*****", "Trying to get logs from:", eventURL, "*****")
 
 	eventRequest, err := http.NewRequest("GET", eventURL, nil)
 	if err != nil {
@@ -87,9 +87,9 @@ func initSalesForceProcessing(AccessToken string, dbcon *gorm.DB) error {
 	totalSize := eventsJSON["totalSize"].(float64)
 	jsonDone := eventsJSON["done"].(bool)
 	if totalSize == 0 {
-		fmt.Println(time.Now().String(), "*****", "Nothing to process", "*****")
+		fmt.Println(time.Now().Format(time.RFC3339Nano), "*****", "Nothing to process", "*****")
 	} else {
-		fmt.Println(time.Now().String(), "*****", "Beginning to process", totalSize, "log files. All items returned on this query? ->", jsonDone, "*****")
+		fmt.Println(time.Now().Format(time.RFC3339Nano), "*****", "Beginning to process", totalSize, "log files. All items returned on this query? ->", jsonDone, "*****")
 		events := eventsJSON["records"].([]interface{})
 
 		// If the query results are complete, set the state to run TODAY's data in the next iteration, else
@@ -112,24 +112,25 @@ func initSalesForceProcessing(AccessToken string, dbcon *gorm.DB) error {
 		for _, event := range events {
 			eventMap := event.(map[string]interface{})
 			Id := eventMap["Id"].(string)
+			LastModifiedDate := eventMap["LastModifiedDate"].(string)
 			// Check if Id was processed before to avoid duplicates
 			wasProcessed := db.FindByID(dbcon, Id)
 			if !wasProcessed {
-				errLog := procLogsById(Id, AccessToken, dbcon)
+				errLog := procLogsById(Id, LastModifiedDate, AccessToken, dbcon)
 				if errLog != nil {
-					fmt.Println(time.Now().String(), "*****", "Error processing log file with ID =", Id, errLog, "*****")
+					fmt.Println(time.Now().Format(time.RFC3339Nano), "*****", "Error processing log file with ID =", Id, errLog, "*****")
 				}
 			} else {
-				fmt.Println(time.Now().String(), "*****", "Discarding processed log file with ID =", Id, "*****")
+				fmt.Println(time.Now().Format(time.RFC3339Nano), "*****", "Discarding processed log file with ID =", Id, "*****")
 			}
 
 		}
 		// Finally, update state
 		updateErr := db.UpdateState(dbcon, state)
 		if updateErr != nil {
-			fmt.Println(time.Now().String(), "*****", "Error updating state ->", updateErr, "*****")
+			fmt.Println(time.Now().Format(time.RFC3339Nano), "*****", "Error updating state ->", updateErr, "*****")
 		} else {
-			fmt.Println(time.Now().String(), "*****", "Updating final state to: (State ->", state.State, "), (Next EndPoint ->", state.NextEndPoint, ") *****")
+			fmt.Println(time.Now().Format(time.RFC3339Nano), "*****", "Updating final state to: (State ->", state.State, "), (Next EndPoint ->", state.NextEndPoint, ") *****")
 		}
 	}
 
@@ -137,7 +138,7 @@ func initSalesForceProcessing(AccessToken string, dbcon *gorm.DB) error {
 }
 
 // procLogsById is a method to get data from a specific EventLogFile
-func procLogsById(Id string, token string, dbcon *gorm.DB) error {
+func procLogsById(Id string, LastModifiedDate string, token string, dbcon *gorm.DB) error {
 
 	// Retrieve event data from Salesforce
 	eventURL := configs.InstanceUrl + configs.EventsEndPoint + "/" + Id + "/LogFile"
@@ -158,7 +159,7 @@ func procLogsById(Id string, token string, dbcon *gorm.DB) error {
 	if err != nil {
 		return err
 	}
-	errProc := processLogContent(eventResponseBody, Id, dbcon)
+	errProc := processLogContent(eventResponseBody, Id, LastModifiedDate, dbcon)
 	if errProc != nil {
 		return errProc
 	}
@@ -167,7 +168,7 @@ func procLogsById(Id string, token string, dbcon *gorm.DB) error {
 }
 
 // processLogContent is a method to process the logfile from sales force line by line, convert each line in a json object and send it to UTMStack
-func processLogContent(data []byte, Id string, dbcon *gorm.DB) error {
+func processLogContent(data []byte, Id string, LastModifiedDate string, dbcon *gorm.DB) error {
 
 	reader := csv.NewReader(bytes.NewBuffer(data))
 
@@ -177,6 +178,7 @@ func processLogContent(data []byte, Id string, dbcon *gorm.DB) error {
 			return err
 		}
 	}
+	anyInsertion := false // To control if any row was posted successfully
 	for {
 		line, err := reader.Read()
 		if err != nil {
@@ -191,19 +193,34 @@ func processLogContent(data []byte, Id string, dbcon *gorm.DB) error {
 		if jsonError != nil {
 			fmt.Println(jsonError)
 		} else {
-			// Send local_storage to SIEM
+			// Send data to SIEM
 			postErr := PostToSiem(jsonEvent)
 			if postErr != nil {
 				fmt.Println(postErr)
+			} else {
+				// Row was posted
+				anyInsertion = true
 			}
 		}
 	}
-	// Insert the processed Id into the DB
-	wasInserted := db.InsertId(dbcon, Id)
-	if wasInserted {
-		fmt.Println(time.Now().String(), "EventLogFile -> ", Id, "processed")
+	// Insert the processed Id into the DB if almost one row was posted successfully to SIEM
+	if anyInsertion {
+		wasInserted := db.InsertId(dbcon, Id)
+		if wasInserted {
+			fmt.Println(time.Now().Format(time.RFC3339Nano), "EventLogFile -> ", Id, "processed")
+			// Update last state time, in sf_state table: Every time that we process a log file, we update
+			// the last date to the LastModifiedDate value of the log file
+			sfLogDate := db.SfState{
+				LastDate: LastModifiedDate,
+			}
+			updateErr := db.UpdateState(dbcon, sfLogDate)
+			if updateErr != nil {
+				fmt.Println(time.Now().Format(time.RFC3339Nano), "Error updating last date in state ->", updateErr)
+			}
+		}
+	} else {
+		fmt.Println(time.Now().Format(time.RFC3339Nano), "EventLogFile -> ", Id, "couldn't be processed, reason: 0 rows posted to SIEM, may be the correlation server is down!!!")
 	}
-
 	return nil
 }
 
