@@ -22,7 +22,7 @@ const (
 	// SIEM URL
 	SiemURL = "http://correlation:8080/v1/newlog"
 	// Actual version of the API
-	SF_version = "1.0.0 2023-03-08 17:24:05"
+	SF_version = "1.0.0 2023-03-14 15:08:24"
 )
 
 // State constants
