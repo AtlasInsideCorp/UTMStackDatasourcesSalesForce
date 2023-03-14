@@ -13,7 +13,8 @@ import (
 // SfLogRecord is the table to store processed Ids
 type SfLogRecord struct {
 	gorm.Model
-	Log_id string
+	LogDate time.Time
+	Log_id  string
 }
 
 // SfState is the table to store last states when processing logfiles
@@ -80,8 +81,7 @@ func FindByID(db *gorm.DB, Id string) bool {
 }
 
 // InsertId is a method to insert an element into the DB
-func InsertId(dbcon *gorm.DB, Id string) bool {
-	sfrecord := SfLogRecord{Log_id: Id}
+func InsertId(dbcon *gorm.DB, sfrecord SfLogRecord) bool {
 	result := dbcon.Create(&sfrecord)
 	if result.RowsAffected > 0 {
 		return true
@@ -124,4 +124,13 @@ func GetState(db *gorm.DB) (SfState, error) {
 	} else {
 		return sflog, nil
 	}
+}
+
+// DeleteLogIdsByDate is a method to clean log records with date < given date
+func DeleteLogIdsByDate(db *gorm.DB, date string) error {
+	result := db.Delete(&SfLogRecord{}, "log_date < ?", date)
+	if result.Error != nil {
+		return errors.New("Unable to perform log ids cleaning - > " + result.Error.Error())
+	}
+	return nil
 }

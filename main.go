@@ -9,6 +9,7 @@ import (
 	"github.com/c3s4rfred/sforceds/db"
 	"github.com/c3s4rfred/sforceds/models"
 	"github.com/c3s4rfred/sforceds/oauth"
+	"github.com/c3s4rfred/sforceds/utils"
 	"gorm.io/gorm"
 	"io"
 	"net/http"
@@ -34,7 +35,6 @@ func main() {
 	if errdb != nil {
 		panic(errdb)
 	}
-
 	// Retrieve event data from Salesforce
 	err := initSalesForceProcessing(loginResp.AccessToken, dbcon)
 	if err != nil {
@@ -215,7 +215,15 @@ func processLogContent(data []byte, Id string, LastModifiedDate string, dbcon *g
 	}
 	// Insert the processed Id into the DB if almost one row was posted successfully to SIEM
 	if anyInsertion {
-		wasInserted := db.InsertId(dbcon, Id)
+		LastMdate, dateErr := time.Parse(time.RFC3339Nano, utils.PrepareDate(LastModifiedDate))
+		if dateErr != nil {
+			fmt.Println(time.Now().Format(time.RFC3339Nano), "Error parsing date while saving log record -> ", dateErr.Error())
+		}
+		sflogrec := db.SfLogRecord{
+			LogDate: LastMdate,
+			Log_id:  Id,
+		}
+		wasInserted := db.InsertId(dbcon, sflogrec)
 		if wasInserted {
 			fmt.Println(time.Now().Format(time.RFC3339Nano), "EventLogFile -> ", Id, "processed")
 			// Update last state time, in sf_state table: Every time that we process a log file, we update
@@ -275,8 +283,6 @@ func PostToSiem(jsonData []byte) error {
 	_, err = siemClient.Do(siemRequest)
 	if err != nil {
 		return err
-	} else {
-		// Update date in state
 	}
 
 	return nil
