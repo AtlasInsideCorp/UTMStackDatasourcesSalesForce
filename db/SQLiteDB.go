@@ -128,7 +128,7 @@ func GetState(db *gorm.DB) (SfState, error) {
 
 // DeleteLogIdsByDate is a method to clean log records with date < given date
 func DeleteLogIdsByDate(db *gorm.DB, date string) error {
-	result := db.Delete(&SfLogRecord{}, "log_date < ?", date)
+	result := db.Unscoped().Delete(&SfLogRecord{}, "log_date < ?", date)
 	if result.Error != nil {
 		return errors.New("Unable to perform log ids cleaning - > " + result.Error.Error())
 	}

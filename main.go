@@ -13,6 +13,7 @@ import (
 	"gorm.io/gorm"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -35,6 +36,25 @@ func main() {
 	if errdb != nil {
 		panic(errdb)
 	}
+	// Perform data clean
+	fmt.Println(time.Now().Format(time.RFC3339Nano), "***** Initiating data clean *****")
+	sfLastState, errState := db.GetState(dbcon)
+	if errState != nil {
+		panic(errState)
+	} else {
+		if strings.Compare(sfLastState.LastDate, configs.StateTimeYesterday) != 0 {
+			deleteDate, _ := time.Parse(time.RFC3339Nano, utils.PrepareDate(sfLastState.LastDate))
+			delErr := db.DeleteLogIdsByDate(dbcon, deleteDate.Format(time.RFC3339Nano))
+			if delErr != nil {
+				fmt.Println(time.Now().Format(time.RFC3339Nano), delErr.Error())
+			} else {
+				fmt.Println(time.Now().Format(time.RFC3339Nano), "***** Data clean success log date <", deleteDate.Format(time.RFC3339Nano), "*****")
+			}
+		} else {
+			fmt.Println(time.Now().Format(time.RFC3339Nano), "***** Data clean is not necessary *****")
+		}
+	}
+
 	// Retrieve event data from Salesforce
 	err := initSalesForceProcessing(loginResp.AccessToken, dbcon)
 	if err != nil {
@@ -58,7 +78,7 @@ func initSalesForceProcessing(AccessToken string, dbcon *gorm.DB) error {
 	}
 	// Set the eventURL according to last state
 	if strings.Compare(sfLastState.State, configs.StateDone) == 0 {
-		eventURL = configs.InstanceUrl + configs.QueryEndPoint + sfLastState.LastDate + configs.OrderByForQuery
+		eventURL = configs.InstanceUrl + configs.QueryEndPoint + url.QueryEscape(sfLastState.LastDate) + configs.OrderByForQuery
 	} else {
 		eventURL = configs.InstanceUrl + sfLastState.NextEndPoint
 	}
