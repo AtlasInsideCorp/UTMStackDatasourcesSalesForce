@@ -7,6 +7,11 @@ on:
 jobs:
   docker-sf:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # need this for OIDC
+      contents: read
+      actions: write
+      packages: write
     if: github.event.pull_request.merged == true
     steps:
       - uses: actions/checkout@v3
