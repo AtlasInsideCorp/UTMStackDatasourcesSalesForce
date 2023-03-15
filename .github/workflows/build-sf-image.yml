@@ -28,7 +28,6 @@ jobs:
       - name: Build, tag and push image
         env:
           ECR_REGISTRY: ghcr.io
-          ECR_REPOSITORY: sbnat
           IMAGE_TAG: ${{ env.PROJECT_VERSION }}
         run: |
           # Build a docker container and push it to ECR so that it can be deployed to ECS.
