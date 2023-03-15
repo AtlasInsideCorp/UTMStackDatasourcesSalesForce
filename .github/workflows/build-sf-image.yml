@@ -13,6 +13,11 @@ on:
         type: string
 jobs:
   build:
+    permissions:
+      id-token: write # need this for OIDC
+      contents: read
+      actions: write
+      packages: write
     runs-on: ubuntu-latest
     steps:
       - name: Set env
