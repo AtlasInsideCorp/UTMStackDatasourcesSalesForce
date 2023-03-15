@@ -33,4 +33,4 @@ jobs:
           # Build a docker container and push it to ECR so that it can be deployed to ECS.
           docker login -u AtlasInsideCorp -p ${{ secrets.GITHUB_TOKEN }} $ECR_REGISTRY
           docker build -t ghcr.io/atlasinsidecorp/${{inputs.image_name}}:${{inputs.environment}} .
-          docker push image ghcr.io/atlasinsidecorp/${{inputs.image_name}}:${{inputs.environment}}
+          docker image push ghcr.io/atlasinsidecorp/${{inputs.image_name}}:${{inputs.environment}}
