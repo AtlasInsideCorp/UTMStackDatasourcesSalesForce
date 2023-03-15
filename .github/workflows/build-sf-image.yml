@@ -29,7 +29,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Image
-        run: docker build -t ghcr.io/c3s4rfred/sforceds:latest .
+        run: docker build -t ghcr.io/c3s4rfred/sforcedatas:latest .
 
       - name: Push Image
-        run: docker push ghcr.io/c3s4rfred/sforceds:latest
+        run: docker push ghcr.io/c3s4rfred/sforcedatas:latest
