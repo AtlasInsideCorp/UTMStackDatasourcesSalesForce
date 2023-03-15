@@ -1,0 +1,20 @@
+name: SalesForce DS Build
+on:
+  pull_request:
+    types:
+      - closed
+    branches: [ master ]
+  workflow_dispatch:
+jobs:
+  docker-sf:
+    permissions:
+      id-token: write # need this for OIDC
+      contents: read
+      actions: write
+      packages: write
+    if: github.event.pull_request.merged == true
+    uses: ./.github/workflows/build-sf-image.yml
+    with:
+      image_name: sforceds
+      environment: prod
+      branch: master
