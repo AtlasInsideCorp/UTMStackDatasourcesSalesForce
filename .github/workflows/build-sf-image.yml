@@ -29,7 +29,7 @@ jobs:
           password: ${{secrets.REGISTRY_KEY}}
 
       - name: Build Image
-        run: docker build -t utmstack.azurecr.io/atlasinsidecorp/sforceds:latest .
+        run: docker build -t utmstack.azurecr.io/atlasinsidecorp/sforceds:v9 .
 
       - name: Push Image
-        run: docker push utmstack.azurecr.io/atlasinsidecorp/sforceds:latest
+        run: docker push utmstack.azurecr.io/atlasinsidecorp/sforceds:v9
